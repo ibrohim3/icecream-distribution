@@ -52,7 +52,37 @@ const getAllProducts = async (req, res) => {
         });
     }
 }
+
+// update
+const updateProducts = async (req, res) => {
+    try {
+        const { id } = req.params
+        const { name, price, quantity } = req.body
+        const updateData = { name, price, quantity }
+        const updatedProduct = await Products.findByIdAndUpdate(
+            id, updateData, { new: true }
+        )
+        if (!updatedProduct) {
+            return res.status(404).json({
+                success: false,
+                message: "Product topilmadi."
+            })
+        }
+        return res.status(200).json({
+            success: true,
+            message: "Yangilandi",
+            updatedProduct
+        })
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: "Server xatosi",
+            error: error.message
+        })
+    }
+}
 module.exports = {
     createProducts,
-    getAllProducts
+    getAllProducts,
+    updateProducts
 };
