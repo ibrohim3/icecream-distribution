@@ -1,21 +1,20 @@
 const { Schema, model } = require("mongoose");
 
-const stockSchema = new Schema(
-    {
-        productId: {
-            type: Schema.Types.ObjectId,
-            ref: "products",
-            required: true
-        },
-        quantity: {
-            type: Number,
-            required: true,
-            min: 1
-        },
-        totalPrice: {
-            type: Number
-        }
+const stockSchema = new Schema({
+    productId: {
+        type: Schema.Types.ObjectId,
+        ref: "products",
+        required: true
     },
+    quantity: {
+        type: Number,
+        required: true,
+        min: 1
+    },
+    totalPrice: {
+        type: Number
+    }
+},
     { timestamps: true }
 );
 

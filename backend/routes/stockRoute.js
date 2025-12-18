@@ -6,9 +6,11 @@ const {
     getAllStocks,
     getStockById,
     updateStock,
-    deleteStock
+    deleteStock,
+    getWarehouseSummary
 } = require("../controller/stock.controller")
 
+stock.get("/warehouse", getWarehouseSummary)
 stock.post("/", addStock)
 stock.get("/", getAllStocks)
 stock.get("/:id", getStockById)

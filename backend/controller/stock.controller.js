@@ -136,10 +136,56 @@ const deleteStock = async (req, res) => {
         });
     }
 };
+
+// warehouse
+const getWarehouseSummary = async (req, res) => {
+    try {
+        const data = await Stock.aggregate([
+            {
+                $group: {
+                    _id: "$productId",
+                    totalQuantity: { $sum: "$quantity" },
+                    totalAmount: { $sum: "$totalPrice" }
+                }
+            },
+            {
+                $lookup: {
+                    from: "products",
+                    localField: "_id",
+                    foreignField: "_id",
+                    as: "product"
+                }
+            },
+            { $unwind: "$product" },
+            {
+                $project: {
+                    _id: 0,
+                    productId: "$product._id",
+                    name: "$product.name",
+                    currentPrice: "$product.price",
+                    totalQuantity: 1,
+                    totalAmount: 1
+                }
+            }
+        ])
+
+        res.json({
+            success: true,
+            data
+        })
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        })
+    }
+}
+
 module.exports = {
     addStock,
     getAllStocks,
     getStockById,
     updateStock,
-    deleteStock
+    deleteStock,
+    getWarehouseSummary
 };
