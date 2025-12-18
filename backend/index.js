@@ -29,8 +29,10 @@ app.listen(PORT, () => {
 const { product } = require("./routes/productsRoute")
 const { stock } = require("./routes/stockRoute")
 const { store } = require("./routes/storeRoute")
-const { router } = require("./routes/storeSupplyRoute")
+const { router } = require("./routes/storeSupplyRoute");
+const { report } = require('./routes/reportRoute');
 app.use("/api/products", product)
 app.use("/api/stock", stock)
 app.use("/api/store", store)
 app.use("/api/storeSupply", router)
+app.use("/api/report", report)
