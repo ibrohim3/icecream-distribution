@@ -27,4 +27,6 @@ app.listen(PORT, () => {
 })
 
 const { product } = require("./routes/productsRoute")
+const { stock } = require("../backend/routes/stockRoute")
 app.use("/api/products", product)
+app.use("/api/stock", stock)

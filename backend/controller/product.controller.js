@@ -1,27 +1,22 @@
-const { count } = require("console");
 const { Products } = require("../model/productsSchema");
 
-// Create product yoki quantity qo'shish
 const createProducts = async (req, res) => {
     try {
-        const { name, price, quantity } = req.body;
-        let product = await Products.findOne({ name });
+        const { name, price } = req.body;
+        let product = await Products.findOne({ name: name.trim() });
         if (product) {
-            product.quantity += quantity;
-            await product.save();
             return res.status(200).json({
                 success: true,
-                message: "Mavjud productga quantity qo'shildi",
-                product
-            });
-        } else {
-            product = await Products.create({ name, price, quantity });
-            return res.status(201).json({
-                success: true,
-                message: "Yangi product qo'shildi",
+                message: "Bu nomdagi product allaqachon mavjud",
                 product
             });
         }
+        product = await Products.create({ name, price });
+        return res.status(201).json({
+            success: true,
+            message: "Yangi product muvaffaqiyatli yaratildi",
+            product
+        });
     } catch (error) {
         return res.status(500).json({
             success: false,
@@ -35,14 +30,10 @@ const createProducts = async (req, res) => {
 const getAllProducts = async (req, res) => {
     try {
         const products = await Products.find();
-        const totalPrice = products.length > 0
-            ? products.map(p => p.price * p.quantity).reduce((a, b) => a + b, 0)
-            : 0;
         return res.status(200).json({
             success: true,
             count: products.length,
             products,
-            totalPrice
         });
     } catch (error) {
         return res.status(500).json({
@@ -57,8 +48,8 @@ const getAllProducts = async (req, res) => {
 const updateProducts = async (req, res) => {
     try {
         const { id } = req.params
-        const { name, price, quantity } = req.body
-        const updateData = { name, price, quantity }
+        const { name, price } = req.body
+        const updateData = { name, price }
         const updatedProduct = await Products.findByIdAndUpdate(
             id, updateData, { new: true }
         )
@@ -81,8 +72,34 @@ const updateProducts = async (req, res) => {
         })
     }
 }
+
+// delete
+const deleteProducts = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const deletedProduct = await Products.findByIdAndDelete(id);
+        if (!deletedProduct) {
+            return res.status(404).json({
+                success: false,
+                message: "Product topilmadi."
+            });
+        }
+        return res.status(200).json({
+            success: true,
+            message: "Product o'chirildi",
+            deletedProduct
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: "Server xatosi",
+            error: error.message
+        });
+    }
+}
 module.exports = {
     createProducts,
     getAllProducts,
-    updateProducts
+    updateProducts,
+    deleteProducts
 };
