@@ -49,7 +49,7 @@ const addStock = async (req, res) => {
 const getAllStocks = async (req, res) => {
     try {
         const stocks = await Stock.find()
-            .populate("productId", "name buyPrice sellPrice")
+            .populate("productId")
             .sort({ createdAt: -1 });
 
         return res.json({
@@ -69,7 +69,8 @@ const getAllStocks = async (req, res) => {
 const getStockById = async (req, res) => {
     try {
         const stock = await Stock.findById(req.params.id)
-            .populate("productId", "name buyPrice sellPrice");
+            .populate("productId", "name price")
+
 
         if (!stock) {
             return res.status(404).json({
@@ -98,6 +99,12 @@ const updateStock = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: "Stock topilmadi"
+            });
+        }
+        if (quantity < 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Quantity manfiy bo‘lishi mumkin emas"
             });
         }
         stock.quantity = quantity;
@@ -144,8 +151,7 @@ const getWarehouseSummary = async (req, res) => {
             {
                 $group: {
                     _id: "$productId",
-                    totalQuantity: { $sum: "$quantity" },
-                    totalAmount: { $sum: "$totalPrice" }
+                    totalQuantity: { $sum: "$quantity" }
                 }
             },
             {
@@ -162,9 +168,11 @@ const getWarehouseSummary = async (req, res) => {
                     _id: 0,
                     productId: "$product._id",
                     name: "$product.name",
-                    currentPrice: "$product.price",
+                    price: "$product.price",
                     totalQuantity: 1,
-                    totalAmount: 1
+                    totalAmount: {
+                        $multiply: ["$totalQuantity", "$product.price"]
+                    }
                 }
             }
         ])
@@ -180,6 +188,7 @@ const getWarehouseSummary = async (req, res) => {
         })
     }
 }
+
 
 module.exports = {
     addStock,

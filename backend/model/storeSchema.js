@@ -1,7 +1,11 @@
 const { Schema, model } = require('mongoose')
 
 const storeSchema = new Schema({
-    name: { ype: String, required: true, unique: true },
+    name: {
+        type: String,
+        required: true,
+        unique: true, trim: true
+    },
     address: { type: String }
 }, { timestamps: true })
 
