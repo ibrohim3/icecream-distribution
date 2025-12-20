@@ -6,7 +6,8 @@ const storeSchema = new Schema({
         required: true,
         unique: true, trim: true
     },
-    address: { type: String }
+    address: { type: String },
+    // phone_number: { type: String, required: true }
 }, { timestamps: true })
 
 const Store = model("store", storeSchema)

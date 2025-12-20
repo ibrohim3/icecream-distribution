@@ -8,3 +8,4 @@ const productsSchema = new Schema({
 
 const Products = model("products", productsSchema)
 module.exports = { Products }
+
