@@ -3,15 +3,15 @@ const { Store } = require("../model/storeSchema")
 // Create Store
 const createStore = async (req, res) => {
     try {
-        const { name, address } = req.body
-        if (!name) {
+        const { name, address, phone_number } = req.body
+        if (!name, !phone_number) {
             return res.status(400).json({ success: false, message: "Store nomi majburiy" })
         }
         const exists = await Store.findOne({ name })
         if (exists) {
             return res.status(409).json({ success: false, message: "Bunday store allaqachon mavjud" })
         }
-        const store = await Store.create({ name, address })
+        const store = await Store.create({ name, address, phone_number })
         res.status(201).json({ success: true, message: "Store yaratildi", data: store })
     } catch (error) {
         res.status(500).json({ success: false, message: error.message })
@@ -49,7 +49,7 @@ const getStoreById = async (req, res) => {
 const updateStore = async (req, res) => {
     try {
         const { id } = req.params
-        const { name, address } = req.body
+        const { name, address, phone_number } = req.body
         const store = await Store.findById(id)
         if (!store) {
             return res.status(404).json({ success: false, message: "Store topilmadi" })
@@ -62,6 +62,8 @@ const updateStore = async (req, res) => {
             store.name = name
         }
         if (address !== undefined) store.address = address
+        if (phone_number !== undefined) store.phone_number = phone_number
+
         await store.save()
         return res.status(200).json({
             success: true, message: "Store yangilandi", data: store
