@@ -7,57 +7,56 @@ const mongoose = require("mongoose")
 // 1️⃣ Distribution (do‘konga product berish)
 const distributeToStore = async (req, res) => {
     try {
-        const { storeId, productId, quantity, paidAmount = 0 } = req.body
-        if (!storeId || !productId || !quantity)
-            return res.status(400).json({ success: false, message: "storeId, productId va quantity majburiy" })
+        const { storeId, products, paidAmount = 0 } = req.body
+        if (!storeId || !products?.length)
+            return res.status(400).json({ success: false, message: "storeId va products majburiy" })
 
-        // Ombordan tekshirish
-        const stock = await Stock.findOne({ productId })
-        if (!stock || stock.quantity < quantity)
-            return res.status(400).json({ success: false, message: "Omborda yetarli product yo‘q" })
+        const results = []
 
-        const product = await Products.findById(productId)
-        if (!product) return res.status(404).json({ success: false, message: "Product topilmadi" })
+        for (const p of products) {
+            const { productId, quantity } = p
+            if (!productId || !quantity)
+                return res.status(400).json({ success: false, message: "productId va quantity majburiy" })
 
-        const unitPrice = product.price
-        const totalAmount = unitPrice * quantity
+            const stock = await Stock.findOne({ productId })
+            if (!stock || stock.quantity < quantity)
+                return res.status(400).json({ success: false, message: `${productId} uchun yetarli stock yo‘q` })
 
-        // StoreSupply yozuvini yangilash yoki yaratish
-        let supply = await StoreSupply.findOne({ storeId, productId })
-        if (supply) {
-            supply.quantity += quantity
-            supply.totalAmount += totalAmount
-            supply.paidAmount += paidAmount
-            await supply.save()
-        } else {
-            supply = await StoreSupply.create({
-                storeId,
+            const product = await Products.findById(productId)
+            const unitPrice = product.price
+            const totalAmount = unitPrice * quantity
+
+            let supply = await StoreSupply.findOne({ storeId, productId })
+            if (supply) {
+                supply.quantity += quantity
+                supply.totalAmount += totalAmount
+                supply.paidAmount += paidAmount
+                await supply.save()
+            } else {
+                supply = await StoreSupply.create({
+                    storeId,
+                    productId,
+                    unitPrice,
+                    quantity,
+                    totalAmount,
+                    paidAmount
+                })
+            }
+
+            stock.quantity -= quantity
+            await stock.save()
+
+            results.push({
                 productId,
-                unitPrice,
-                quantity,
-                totalAmount,
-                paidAmount
-            })
-        }
-
-        // Ombordagi quantity kamaytirish
-        stock.quantity -= quantity
-        await stock.save()
-
-        res.status(201).json({
-            success: true,
-            message: "Product do‘konga berildi",
-            data: {
                 supplyId: supply._id,
-                storeId,
-                productId,
                 quantity: supply.quantity,
                 totalAmount: supply.totalAmount,
                 paidAmount: supply.paidAmount,
-                debt: supply.totalAmount - supply.paidAmount,
                 remainingStock: stock.quantity
-            }
-        })
+            })
+        }
+
+        res.status(201).json({ success: true, message: "Products do‘konga berildi", data: results })
     } catch (e) {
         res.status(500).json({ success: false, message: e.message })
     }
