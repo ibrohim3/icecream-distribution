@@ -1,10 +1,10 @@
 const { Router } = require("express")
 const router = Router()
 
-const { distributeToStore, getStoreProducts, payFromStore } = require("../controller/storeSupply.controller")
+const { distributeToStore, payFromStore, getStoreTotalDebt } = require("../controller/storeSupply.controller")
 
 router.post("/distribute", distributeToStore)
-router.get("/:storeId", getStoreProducts)
+router.get("/:storeId", getStoreTotalDebt)
 router.post("/pay", payFromStore)
 
 module.exports = { router }

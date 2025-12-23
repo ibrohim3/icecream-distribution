@@ -48,16 +48,14 @@ const { StoreSupply } = require("../model/storeSupplySchema")
 // };
 
 
-const { StoreSupply } = require("../model/storeSupplySchema");
 
 const getDailyReport = async (req, res) => {
     try {
         let { date } = req.query;
 
-        // Agar date berilmagan bo‘lsa, bugungi sanani o‘rnatamiz
         if (!date) {
             const today = new Date();
-            date = today.toISOString().slice(0, 10); // "YYYY-MM-DD"
+            date = today.toISOString().slice(0, 10);
         }
 
         const start = new Date(date);
