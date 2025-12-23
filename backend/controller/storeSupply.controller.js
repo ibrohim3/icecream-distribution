@@ -5,46 +5,40 @@ const { Products } = require("../model/productsSchema")
 const mongoose = require("mongoose")
 
 // 1️⃣ Distribution (do‘konga product berish)
-const distributeToStore = async (req, res) => {
-    try {
-        const { storeId, products, paidAmount = 0 } = req.body
-        if (!storeId || !products?.length)
-            return res.status(400).json({ success: false, message: "storeId va products majburiy" })
 
-        const results = []
+const distributeToStore = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const { storeId, products, paidAmount = 0 } = req.body;
+        if (!storeId || !products?.length)
+            return res.status(400).json({ success: false, message: "storeId va products majburiy" });
+
+        const allTotal = products.reduce((sum, p) => sum + p.totalAmount, 0); // shu yer
+
+        const results = [];
 
         for (const p of products) {
-            const { productId, quantity } = p
-            if (!productId || !quantity)
-                return res.status(400).json({ success: false, message: "productId va quantity majburiy" })
+            const { productId, quantity, unitPrice, totalAmount } = p;
 
-            const stock = await Stock.findOne({ productId })
+            // stock tekshirish va kamaytirish
+            const stock = await Stock.findOne({ productId }).session(session);
             if (!stock || stock.quantity < quantity)
-                return res.status(400).json({ success: false, message: `${productId} uchun yetarli stock yo‘q` })
+                throw new Error(`${productId} uchun yetarli stock yo‘q`);
+            stock.quantity -= quantity;
+            await stock.save({ session });
 
-            const product = await Products.findById(productId)
-            const unitPrice = product.price
-            const totalAmount = unitPrice * quantity
-
-            let supply = await StoreSupply.findOne({ storeId, productId })
-            if (supply) {
-                supply.quantity += quantity
-                supply.totalAmount += totalAmount
-                supply.paidAmount += paidAmount
-                await supply.save()
-            } else {
-                supply = await StoreSupply.create({
-                    storeId,
-                    productId,
-                    unitPrice,
-                    quantity,
-                    totalAmount,
-                    paidAmount
-                })
-            }
-
-            stock.quantity -= quantity
-            await stock.save()
+            // Supply yangilash / yaratish
+            const productPaid = (totalAmount / allTotal) * paidAmount; // shu yer
+            const supply = await StoreSupply.findOneAndUpdate(
+                { storeId, productId },
+                {
+                    $inc: { quantity, totalAmount, paidAmount: productPaid },
+                    $set: { unitPrice }
+                },
+                { upsert: true, new: true, session } // session bilan
+            );
 
             results.push({
                 productId,
@@ -53,14 +47,79 @@ const distributeToStore = async (req, res) => {
                 totalAmount: supply.totalAmount,
                 paidAmount: supply.paidAmount,
                 remainingStock: stock.quantity
-            })
+            });
         }
 
-        res.status(201).json({ success: true, message: "Products do‘konga berildi", data: results })
+        await session.commitTransaction();
+        res.status(201).json({ success: true, message: "Products do'konga berildi", data: results });
+
     } catch (e) {
-        res.status(500).json({ success: false, message: e.message })
+        await session.abortTransaction();
+        res.status(500).json({ success: false, message: e.message });
+    } finally {
+        session.endSession();
     }
-}
+};
+
+
+// const distributeToStore = async (req, res) => {
+//     try {
+//         const { storeId, products, paidAmount = 0 } = req.body
+//         if (!storeId || !products?.length)
+//             return res.status(400).json({ success: false, message: "storeId va products majburiy" })
+
+//         const results = []
+
+//         for (const p of products) {
+//             const { productId, quantity } = p
+//             if (!productId || !quantity)
+//                 return res.status(400).json({ success: false, message: "productId va quantity majburiy" })
+
+//             const stock = await Stock.findOne({ productId })
+//             if (!stock || stock.quantity < quantity)
+//                 return res.status(400).json({ success: false, message: `${productId} uchun yetarli stock yo‘q` })
+
+//             const product = await Products.findById(productId)
+//             const unitPrice = product.price
+//             const totalAmount = unitPrice * quantity
+
+//             let supply = await StoreSupply.findOne({ storeId, productId })
+//             if (supply) {
+//                 supply.quantity += quantity
+//                 supply.totalAmount += totalAmount
+//                 const perProductPaid = paidAmount / products.length;
+//                 supply.paidAmount += perProductPaid;
+
+//                 await supply.save()
+//             } else {
+//                 supply = await StoreSupply.create({
+//                     storeId,
+//                     productId,
+//                     unitPrice,
+//                     quantity,
+//                     totalAmount,
+//                     paidAmount
+//                 })
+//             }
+
+//             stock.quantity -= quantity
+//             await stock.save()
+
+//             results.push({
+//                 productId,
+//                 supplyId: supply._id,
+//                 quantity: supply.quantity,
+//                 totalAmount: supply.totalAmount,
+//                 paidAmount: supply.paidAmount,
+//                 remainingStock: stock.quantity
+//             })
+//         }
+
+//         res.status(201).json({ success: true, message: "Products do‘konga berildi", data: results })
+//     } catch (e) {
+//         res.status(500).json({ success: false, message: e.message })
+//     }
+// }
 
 // 2️⃣ Store summary (do‘kondagi productlar va qarz)
 const getStoreProducts = async (req, res) => {
@@ -84,7 +143,7 @@ const getStoreProducts = async (req, res) => {
                     unitPrice: 1,
                     totalAmount: 1,
                     paidAmount: 1,
-                    debt: { $subtract: ["$totalAmount", "$paidAmount"] }
+                    debt: { $max: [{ $subtract: ["$totalAmount", "$paidAmount"] }, 0] }
                 }
             }
         ])
@@ -108,7 +167,7 @@ const payFromStore = async (req, res) => {
         res.json({
             success: true,
             message: "To‘lov qabul qilindi",
-            debt: supply.totalAmount - supply.paidAmount
+            debt: Math.max(supply.totalAmount - supply.paidAmount, 0)
         })
     } catch (e) {
         res.status(500).json({ success: false, message: e.message })
